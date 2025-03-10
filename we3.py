@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import os
 import json
+import random
+import datetime
 
 EMPLOYEES_FILE = "employees.csv"
 MESSAGES_FILE = "messages.json"
@@ -13,11 +15,19 @@ if "employees_df" not in st.session_state:
     else:
         st.session_state.employees_df = None
 
-# 加载消息数据
+# 加载消息数据（兼容旧格式）
 if "messages" not in st.session_state:
     if os.path.exists(MESSAGES_FILE):
         with open(MESSAGES_FILE, "r", encoding="utf-8") as f:
-            st.session_state.messages = json.load(f)
+            try:
+                data = json.load(f)
+                # 如果数据是旧格式（仅字符串），转换为字典格式，时间字段为空
+                if isinstance(data, list) and all(isinstance(item, str) for item in data):
+                    st.session_state.messages = [{"time": "", "message": msg} for msg in data]
+                else:
+                    st.session_state.messages = data
+            except Exception:
+                st.session_state.messages = []
     else:
         st.session_state.messages = []
 
@@ -58,26 +68,25 @@ if st.session_state.employees_df is not None:
     st.subheader("Employee Table")
     st.table(st.session_state.employees_df)
 
-# 信息发送部分
+# 信息发送部分（带时间戳）
 st.subheader("Send Messages")
 with st.form(key="message_form", clear_on_submit=True):
     message = st.text_input("Enter a message")
     submitted = st.form_submit_button("Send")
     if submitted and message:
-        st.session_state.messages.append(message)
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        st.session_state.messages.append({"time": timestamp, "message": message})
         with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
             json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
         st.success("Message sent!")
 
-# 显示信息记录和清空按钮
+# 显示消息记录和清空按钮
 st.subheader("Message Log")
 if st.session_state.messages:
-    # 添加清除对话按钮
     if st.button("Clear Messages"):
         st.session_state.messages = []
         with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
             json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
         st.success("Messages cleared!")
-    # 显示所有消息，不带序号
     for msg in st.session_state.messages:
-        st.write(msg)
+        st.write(f"{msg['time']}: {msg['message']}")
