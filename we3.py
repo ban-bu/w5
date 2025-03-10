@@ -125,4 +125,4 @@ with st.form(key="message_form", clear_on_submit=True):
 if st.session_state.messages:
     st.subheader("Message Log")
     for idx, item in enumerate(st.session_state.messages, start=1):
-        st.write(f"{idx}. {item['name
+        st.write(f'{idx}. {item["name
