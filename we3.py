@@ -65,4 +65,11 @@ with st.form(key="message_form", clear_on_submit=True):
         st.session_state.messages.append(message)
         # 保存消息到文件
         with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
-            json.dump(st.session_state.messages, f, ensure_ascii=Fa
+            json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
+        st.success("信息已发送")
+
+# 显示所有发送过的信息
+if st.session_state.messages:
+    st.subheader("信息记录")
+    for idx, msg in enumerate(st.session_state.messages, start=1):
+        st.write(f"{idx}. {msg}")
