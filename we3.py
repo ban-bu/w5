@@ -30,7 +30,7 @@ if "messages" not in st.session_state:
     else:
         st.session_state.messages = []
 
-st.title("H&M Night Shift Crisis - Role Assignment & Work Overview")
+st.title("H&M Night Shift Crisis - Work Overview")
 
 # -------------------------
 # 侧边栏：生成员工数据
@@ -147,7 +147,9 @@ if st.session_state.employees_df is not None:
         st.success(f"Employee {selected_employee}'s {selected_field} updated to {new_value}!")
 
     st.subheader("Employee Table")
-    st.table(st.session_state.employees_df)
+    # 显示时去除 Unfairness 和 Role 两列
+    display_df = st.session_state.employees_df.drop(columns=["Unfairness", "Role"])
+    st.table(display_df)
 
 # -------------------------
 # 信息发送部分（带时间戳）
@@ -158,7 +160,6 @@ with st.form(key="message_form", clear_on_submit=True):
     submitted = st.form_submit_button("Send")
     if submitted and message:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # 这里可以根据需要扩展，例如增加发送者姓名
         st.session_state.messages.append({"time": timestamp, "message": message})
         with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
             json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
