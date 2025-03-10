@@ -3,14 +3,14 @@ import streamlit as st
 st.set_page_config(page_title="天黑请闭眼 - KPI 公屏", layout="centered")
 st.title("天黑请闭眼：KPI 公屏系统")
 
-# 初始化状态（只初始化一次）
+# ---------------- 初始化逻辑 ----------------
 if "initialized" not in st.session_state:
+    st.session_state.initialized = True
     st.session_state.players = {}
     st.session_state.player_count = 0
     st.session_state.messages = []
-    st.session_state.initialized = True
 
-# 输入人数并生成员工
+# ---------------- 生成员工 ----------------
 st.subheader("【主持人操作：生成员工编号】")
 player_count = st.number_input("请输入参与学生人数", min_value=4, max_value=30, value=8)
 if st.button("生成员工编号"):
@@ -21,7 +21,7 @@ if st.button("生成员工编号"):
     }
     st.success(f"已生成 {player_count} 名员工，KPI 初始为 0。")
 
-# 公屏：显示员工 KPI 和状态
+# ---------------- 公屏员工状态 ----------------
 st.subheader("【 公屏：员工 KPI 状态 】")
 if st.session_state.players:
     for pid, info in st.session_state.players.items():
@@ -29,7 +29,7 @@ if st.session_state.players:
 else:
     st.info("请先生成员工编号。")
 
-# 公屏：公告显示
+# ---------------- 公屏公告 ----------------
 st.subheader("【 公屏公告 】")
 if st.session_state.messages:
     for msg in reversed(st.session_state.messages[-10:]):
@@ -40,7 +40,7 @@ if st.session_state.messages:
 else:
     st.write("（暂无公告）")
 
-# 主持人更新员工信息
+# ---------------- 主持人修改信息 ----------------
 st.subheader("【主持人面板：编辑 KPI 与状态】")
 with st.form("update_form"):
     target_id = st.text_input("员工编号（如 005）")
@@ -51,11 +51,11 @@ with st.form("update_form"):
         if target_id in st.session_state.players:
             st.session_state.players[target_id]["KPI"] = new_kpi
             st.session_state.players[target_id]["status"] = new_status
-            st.success(f"员工 {target_id} 信息已更新。")
+            st.success(f"员工 {target_id} 已更新：KPI={new_kpi}，状态={new_status}")
         else:
-            st.warning("该员工编号不存在，请检查输入。")
+            st.warning("员工编号不存在，请检查输入。")
 
-# 主持人公告
+# ---------------- 主持人发公告 ----------------
 st.subheader("【主持人公告发布】")
 with st.form("host_message_form"):
     host_msg = st.text_area("输入主持人公告内容：", height=100)
@@ -64,7 +64,7 @@ with st.form("host_message_form"):
         st.session_state.messages.append({"type": "host", "text": host_msg.strip()})
         st.success("主持人公告已发送。")
 
-# 玩家公告
+# ---------------- 玩家发公告 ----------------
 st.subheader("【玩家匿名发言】")
 with st.form("player_message_form"):
     player_msg = st.text_area("输入公告（匿名）：", height=80)
