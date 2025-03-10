@@ -20,7 +20,6 @@ if "messages" not in st.session_state:
         with open(MESSAGES_FILE, "r", encoding="utf-8") as f:
             try:
                 data = json.load(f)
-                # 若是旧格式，转换为新结构
                 if isinstance(data, list) and all(isinstance(item, str) for item in data):
                     st.session_state.messages = [{"name": "System", "message": msg} for msg in data]
                 else:
@@ -49,7 +48,6 @@ if st.sidebar.button("Generate Employees"):
         night_shifts = random.randint(0, 6)
         base_bonus = hours_worked * 50 + night_shifts * 20
         bonus = max(0, base_bonus - random.randint(0, 300))
-
         employees.append({
             "Employee #": emp_id,
             "Hours Worked": hours_worked,
@@ -127,4 +125,4 @@ with st.form(key="message_form", clear_on_submit=True):
 if st.session_state.messages:
     st.subheader("Message Log")
     for idx, item in enumerate(st.session_state.messages, start=1):
-     
+        st.write(f"{idx}. {item['name
