@@ -22,54 +22,73 @@ if "messages" not in st.session_state:
     else:
         st.session_state.messages = []
 
-st.title("天黑请闭眼 - 公屏展示")
+st.title("Work Overview")
 
-# 侧边栏：生成员工KPI（初始均为 0）
-st.sidebar.header("设置")
-num_employees = st.sidebar.number_input("请输入员工数量", min_value=1, max_value=100, value=10, step=1)
-if st.sidebar.button("生成员工KPI"):
+# 侧边栏：生成员工数据（包含 4 个字段，初始值都为 0）
+st.sidebar.header("Settings")
+num_employees = st.sidebar.number_input("Number of employees", min_value=1, max_value=999, value=5, step=1)
+if st.sidebar.button("Generate Employees"):
     employees = []
     for i in range(num_employees):
-        name = f"员工 {i+1}"
-        kpi = 0  # 初始 KPI 均为 0
-        employees.append({"姓名": name, "KPI": kpi})
+        employees.append({
+            "Employee #": f"{i+1:03d}",  # 001, 002, ...
+            "Hours Worked": 0,
+            "Bonus (HKD)": 0,
+            "Night Shifts": 0
+        })
     st.session_state.employees_df = pd.DataFrame(employees)
     # 保存数据到文件
     st.session_state.employees_df.to_csv(EMPLOYEES_FILE)
-    st.success("员工KPI已生成")
+    st.success("Employees generated successfully!")
 
-# 显示员工 KPI 公屏
+# 显示员工信息表格
 if st.session_state.employees_df is not None:
-    st.subheader("员工 KPI 列表")
+    st.subheader("Employee Table")
     st.table(st.session_state.employees_df)
 
-    # 修改 KPI 部分
-    st.subheader("修改 KPI")
-    employee_names = st.session_state.employees_df["姓名"].tolist()
-    selected_employee = st.selectbox("选择要修改的员工", employee_names)
-    new_kpi = st.number_input("设置新的 KPI 值", value=0, step=1)
-    if st.button("更新 KPI"):
-        idx = st.session_state.employees_df[st.session_state.employees_df["姓名"] == selected_employee].index[0]
-        st.session_state.employees_df.at[idx, "KPI"] = new_kpi
-        # 更新后保存数据
+    # 修改员工信息
+    st.subheader("Update Employee Data")
+    employee_list = st.session_state.employees_df["Employee #"].tolist()
+    selected_employee = st.selectbox("Select an employee to update", employee_list)
+
+    # 选择要修改的字段
+    field_options = ["Hours Worked", "Bonus (HKD)", "Night Shifts"]
+    selected_field = st.selectbox("Select a field to update", field_options)
+
+    # 输入新的数值
+    new_value = st.number_input("New value", value=0, step=1)
+
+    # 点击按钮更新
+    if st.button("Update Data"):
+        # 找到对应员工在 DataFrame 中的行索引
+        idx = st.session_state.employees_df[
+            st.session_state.employees_df["Employee #"] == selected_employee
+        ].index[0]
+
+        # 更新指定字段
+        st.session_state.employees_df.at[idx, selected_field] = new_value
+
+        # 保存更新后的数据
         st.session_state.employees_df.to_csv(EMPLOYEES_FILE)
-        st.success(f"{selected_employee} 的 KPI 已更新为 {new_kpi}")
+        st.success(f"Employee {selected_employee} - {selected_field} updated to {new_value}!")
+
+        # 再次展示更新后的表格
         st.table(st.session_state.employees_df)
 
-# 信息发送部分
-st.subheader("发送信息")
+# 发送信息部分
+st.subheader("Send Messages")
 with st.form(key="message_form", clear_on_submit=True):
-    message = st.text_input("输入信息")
-    submitted = st.form_submit_button("发送信息")
+    message = st.text_input("Enter a message")
+    submitted = st.form_submit_button("Send")
     if submitted and message:
         st.session_state.messages.append(message)
         # 保存消息到文件
         with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
             json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
-        st.success("信息已发送")
+        st.success("Message sent!")
 
 # 显示所有发送过的信息
 if st.session_state.messages:
-    st.subheader("信息记录")
+    st.subheader("Message Log")
     for idx, msg in enumerate(st.session_state.messages, start=1):
         st.write(f"{idx}. {msg}")
