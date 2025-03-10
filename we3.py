@@ -1,77 +1,53 @@
 import streamlit as st
+import pandas as pd
 
-st.set_page_config(page_title="天黑请闭眼 - KPI 公屏", layout="centered")
-st.title("天黑请闭眼：KPI 公屏系统")
-
-# ---------------- 初始化逻辑 ----------------
-if "initialized" not in st.session_state:
-    st.session_state.initialized = True
-    st.session_state.players = {}
-    st.session_state.player_count = 0
+# 初始化 session_state 变量
+if "employees_df" not in st.session_state:
+    st.session_state.employees_df = None
+if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ---------------- 生成员工 ----------------
-st.subheader("【主持人操作：生成员工编号】")
-player_count = st.number_input("请输入参与学生人数", min_value=4, max_value=30, value=8)
-if st.button("生成员工编号"):
-    st.session_state.player_count = player_count
-    st.session_state.players = {
-        f"{i+1:03d}": {"KPI": 0, "status": "在岗"}
-        for i in range(player_count)
-    }
-    st.success(f"已生成 {player_count} 名员工，KPI 初始为 0。")
+st.title("天黑请闭眼 - 公屏展示")
 
-# ---------------- 公屏员工状态 ----------------
-st.subheader("【 公屏：员工 KPI 状态 】")
-if st.session_state.players:
-    for pid, info in st.session_state.players.items():
-        st.markdown(f"- 员工 {pid} | KPI：{info['KPI']} | 状态：**{info['status']}**")
-else:
-    st.info("请先生成员工编号。")
+# 侧边栏设置：输入员工数量并生成初始 KPI 列表（KPI 均为 0）
+st.sidebar.header("设置")
+num_employees = st.sidebar.number_input("请输入员工数量", min_value=1, max_value=100, value=10, step=1)
+if st.sidebar.button("生成员工KPI"):
+    employees = []
+    for i in range(num_employees):
+        name = f"员工 {i+1}"
+        kpi = 0  # 初始 KPI 都为 0
+        employees.append({"姓名": name, "KPI": kpi})
+    st.session_state.employees_df = pd.DataFrame(employees)
 
-# ---------------- 公屏公告 ----------------
-st.subheader("【 公屏公告 】")
+# 显示生成的员工 KPI 公屏
+if st.session_state.employees_df is not None:
+    st.subheader("员工 KPI 列表")
+    st.table(st.session_state.employees_df)
+
+    # 修改 KPI 部分
+    st.subheader("修改 KPI")
+    # 选择员工
+    employee_names = st.session_state.employees_df["姓名"].tolist()
+    selected_employee = st.selectbox("选择要修改的员工", employee_names)
+    new_kpi = st.number_input("设置新的 KPI 值", value=0, step=1)
+    if st.button("更新 KPI"):
+        # 查找该员工对应的索引并更新 KPI
+        idx = st.session_state.employees_df[st.session_state.employees_df["姓名"] == selected_employee].index[0]
+        st.session_state.employees_df.at[idx, "KPI"] = new_kpi
+        st.success(f"{selected_employee} 的 KPI 已更新为 {new_kpi}")
+        st.table(st.session_state.employees_df)
+
+# 信息发送部分
+st.subheader("发送信息")
+with st.form(key="message_form", clear_on_submit=True):
+    message = st.text_input("输入信息")
+    submitted = st.form_submit_button("发送信息")
+    if submitted and message:
+        st.session_state.messages.append(message)
+
+# 显示所有发送过的信息
 if st.session_state.messages:
-    for msg in reversed(st.session_state.messages[-10:]):
-        if msg["type"] == "host":
-            st.info(f"[主持人公告] {msg['text']}")
-        elif msg["type"] == "player":
-            st.warning(f"[玩家发言] {msg['text']}")
-else:
-    st.write("（暂无公告）")
-
-# ---------------- 主持人修改信息 ----------------
-st.subheader("【主持人面板：编辑 KPI 与状态】")
-with st.form("update_form"):
-    target_id = st.text_input("员工编号（如 005）")
-    new_kpi = st.number_input("新的 KPI 值", min_value=0, max_value=999, value=100)
-    new_status = st.selectbox("新的状态", ["在岗", "已淘汰", "弃权"])
-    submit_update = st.form_submit_button("更新员工信息")
-    if submit_update:
-        if target_id in st.session_state.players:
-            st.session_state.players[target_id]["KPI"] = new_kpi
-            st.session_state.players[target_id]["status"] = new_status
-            st.success(f"员工 {target_id} 已更新：KPI={new_kpi}，状态={new_status}")
-        else:
-            st.warning("员工编号不存在，请检查输入。")
-
-# ---------------- 主持人发公告 ----------------
-st.subheader("【主持人公告发布】")
-with st.form("host_message_form"):
-    host_msg = st.text_area("输入主持人公告内容：", height=100)
-    send_host = st.form_submit_button("发送公告")
-    if send_host and host_msg.strip():
-        st.session_state.messages.append({"type": "host", "text": host_msg.strip()})
-        st.success("主持人公告已发送。")
-
-# ---------------- 玩家发公告 ----------------
-st.subheader("【玩家匿名发言】")
-with st.form("player_message_form"):
-    player_msg = st.text_area("输入公告（匿名）：", height=80)
-    send_player = st.form_submit_button("提交发言")
-    if send_player and player_msg.strip():
-        st.session_state.messages.append({"type": "player", "text": player_msg.strip()})
-        st.success("你的发言已发布到公屏。")
-
-st.markdown("---")
-st.caption("教学用途 - KPI 公屏系统 | Powered by Streamlit")
+    st.subheader("信息记录")
+    for idx, msg in enumerate(st.session_state.messages, start=1):
+        st.write(f"{idx}. {msg}")
