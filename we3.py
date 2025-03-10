@@ -55,7 +55,6 @@ if st.session_state.employees_df is not None:
         st.session_state.employees_df.to_csv(EMPLOYEES_FILE)
         st.success(f"Employee {selected_employee} - {selected_field} updated to {new_value}!")
 
-    # 最后显示最新表格
     st.subheader("Employee Table")
     st.table(st.session_state.employees_df)
 
@@ -70,8 +69,15 @@ with st.form(key="message_form", clear_on_submit=True):
             json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
         st.success("Message sent!")
 
-# 显示所有发送过的信息
+# 显示信息记录和清空按钮
+st.subheader("Message Log")
 if st.session_state.messages:
-    st.subheader("Message Log")
-    for idx, msg in enumerate(st.session_state.messages, start=1):
-        st.write(f"{idx}. {msg}")
+    # 添加清除对话按钮
+    if st.button("Clear Messages"):
+        st.session_state.messages = []
+        with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
+            json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
+        st.success("Messages cleared!")
+    # 显示所有消息，不带序号
+    for msg in st.session_state.messages:
+        st.write(msg)
