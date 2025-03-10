@@ -1,67 +1,78 @@
 import streamlit as st
-import random
 
-st.set_page_config(page_title="天黑请闭眼：HR 教学版", layout="centered")
+st.set_page_config(page_title="天黑请闭眼 - KPI 公屏", layout="centered")
+st.title("天黑请闭眼：KPI 公屏系统")
 
-st.title("天黑请闭眼：Night Falls, Time to Leave")
-st.markdown("本系统模拟H&M店铺中的员工KPI状况，请主持人引导找出破坏团队的“杀手”。")
-
-# 初始化状态
+# 初始化
 if "players" not in st.session_state:
     st.session_state.players = {}
 if "player_count" not in st.session_state:
     st.session_state.player_count = 0
-if "roles_assigned" not in st.session_state:
-    st.session_state.roles_assigned = False
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# 步骤 1：设置玩家人数
-player_count = st.number_input("请输入参与学生人数（建议 6-20 人）", min_value=4, max_value=30, value=8)
-if st.button("确认人数"):
+# 步骤 1：输入人数 & 初始化员工列表
+player_count = st.number_input("请输入参与学生人数", min_value=4, max_value=30, value=8)
+if st.button("生成员工编号"):
     st.session_state.player_count = player_count
     st.session_state.players = {
         f"{i+1:03d}": {
-            "KPI": random.randint(60, 100),
-            "status": "在岗",
-            "role": "未分配"
+            "KPI": "",
+            "status": "在岗"
         }
         for i in range(player_count)
     }
-    st.session_state.roles_assigned = False
-    st.success(f"已创建 {player_count} 名员工，请继续分配角色。")
+    st.success(f"已生成 {player_count} 名员工。")
 
-# 步骤 2：分配角色
-if st.button("分配角色"):
-    n = st.session_state.player_count
-    roles_pool = ["杀手", "侦探", "医生"] + ["平民"] * (n - 3)
-    random.shuffle(roles_pool)
-    for i, pid in enumerate(st.session_state.players):
-        st.session_state.players[pid]["role"] = roles_pool[i]
-    st.session_state.roles_assigned = True
-    st.success("角色分配完成，主持人可选择查看。")
-
-# 步骤 3：公屏展示
-st.subheader("【 公屏信息 - 员工KPI 状态看板 】")
+# 公屏展示
+st.subheader("【 公屏：员工状态 】")
 for pid, info in st.session_state.players.items():
-    st.markdown(f"- 员工 {pid} | KPI：{info['KPI']} | 当前状态：**{info['status']}**")
+    kpi_display = info["KPI"] if info["KPI"] else "（空）"
+    st.markdown(f"- 员工 {pid} | KPI：{kpi_display} | 状态：**{info['status']}**")
 
-# 步骤 4：主持人查看所有身份
-if st.checkbox("（仅主持人）点击查看全部身份"):
-    st.subheader("【主持人信息】角色一览")
-    for pid, info in st.session_state.players.items():
-        st.markdown(f"- 员工 {pid} | 角色：**{info['role']}**")
+# 公告展示区
+st.subheader("【 公屏公告 】")
+if st.session_state.messages:
+    for msg in reversed(st.session_state.messages[-10:]):
+        if msg["type"] == "host":
+            st.info(f"[主持人公告] {msg['text']}")
+        elif msg["type"] == "player":
+            st.warning(f"[玩家发言] {msg['text']}")
+else:
+    st.write("（暂无公告）")
 
-# 步骤 5：主持人可更新状态（如被杀/被救）
-st.subheader("【主持人操作面板】")
+# 主持人面板 - 编辑员工状态
+st.subheader("【主持人面板：编辑 KPI 与状态】")
 with st.form("update_form"):
-    target_id = st.text_input("请输入员工编号（例如：005）")
-    new_status = st.selectbox("选择新状态", ["在岗", "已淘汰", "被救", "弃权"])
-    submitted = st.form_submit_button("更新该员工状态")
-    if submitted:
+    target_id = st.text_input("员工编号（如 005）")
+    new_kpi = st.text_input("新的 KPI（可填数字或文字）")
+    new_status = st.selectbox("新的状态", ["在岗", "已淘汰", "弃权"])
+    submit_update = st.form_submit_button("更新员工信息")
+    if submit_update:
         if target_id in st.session_state.players:
+            st.session_state.players[target_id]["KPI"] = new_kpi.strip()
             st.session_state.players[target_id]["status"] = new_status
-            st.success(f"员工 {target_id} 状态已更新为：{new_status}")
+            st.success(f"员工 {target_id} 信息已更新。")
         else:
             st.warning("员工编号不存在，请检查输入。")
 
+# 主持人发送公告
+st.subheader("【主持人公告发布】")
+with st.form("host_message_form"):
+    host_msg = st.text_area("输入主持人公告内容：", height=100)
+    send_host = st.form_submit_button("发送公告")
+    if send_host and host_msg.strip():
+        st.session_state.messages.append({"type": "host", "text": host_msg.strip()})
+        st.success("主持人公告已发送。")
+
+# 玩家发送公告
+st.subheader("【游戏参与者匿名发言】")
+with st.form("player_message_form"):
+    player_msg = st.text_area("输入公告（不会显示你的身份）：", height=80)
+    send_player = st.form_submit_button("提交发言")
+    if send_player and player_msg.strip():
+        st.session_state.messages.append({"type": "player", "text": player_msg.strip()})
+        st.success("你已成功发言，信息已显示在公屏。")
+
 st.markdown("---")
-st.caption("Designed for Talent Management class - Powered by Streamlit")
+st.caption("教学用途 - KPI 公屏系统（主持人 + 玩家发言版） | Powered by Streamlit")
