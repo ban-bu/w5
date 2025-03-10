@@ -30,7 +30,7 @@ if "messages" not in st.session_state:
     else:
         st.session_state.messages = []
 
-st.title("H&M Night Shift Crisis - Work Overview")
+st.title("H&M Night Shift Crisis - Role Assignment & Work Overview")
 
 # -------------------------
 # 侧边栏：生成员工数据
@@ -39,7 +39,7 @@ st.sidebar.header("Settings")
 num_employees = st.sidebar.number_input("Number of employees", min_value=1, max_value=999, value=30, step=1)
 
 if st.sidebar.button("Generate Employees"):
-    # 固定比例分配角色
+    # 固定比例
     killer_ratio = 0.2      # 20%
     detective_ratio = 0.1   # 10%
     doctor_ratio = 0.1      # 10%
@@ -51,7 +51,7 @@ if st.sidebar.button("Generate Employees"):
 
     employees = []
     emp_counter = 1
-    # 生成 KILLER 员工（高工时、高夜班、低奖金、不公平度较高）
+    # 生成 KILLER 员工（高工时、高夜班、低奖金）
     for _ in range(num_killers):
         emp_id = f"{emp_counter:03d}"
         hours_worked = random.randint(16, 20)
@@ -102,7 +102,7 @@ if st.sidebar.button("Generate Employees"):
         })
         emp_counter += 1
 
-    # 生成 CIVILIAN 员工（低工时、低夜班、高奖金、不公平度较低）
+    # 生成 CIVILIAN 员工（低工时、低夜班、高奖金）
     for _ in range(num_civilians):
         emp_id = f"{emp_counter:03d}"
         hours_worked = random.randint(5, 12)
@@ -140,14 +140,14 @@ if st.session_state.employees_df is not None:
         df = st.session_state.employees_df
         idx = df[df["Employee #"] == selected_employee].index[0]
         df.at[idx, selected_field] = new_value
+        # 重新计算不公平度（保持原角色不变，可按需重新分配角色）
         df.at[idx, "Unfairness"] = (df.at[idx, "Hours Worked"] * 50 + df.at[idx, "Night Shifts"] * 20) - df.at[idx, "Bonus (HKD)"]
         st.session_state.employees_df = df
         df.to_csv(EMPLOYEES_FILE, index=False)
         st.success(f"Employee {selected_employee}'s {selected_field} updated to {new_value}!")
-    
+
     st.subheader("Employee Table")
-    # 显示时去掉 Role 列
-    st.table(st.session_state.employees_df.drop(columns=["Role"]))
+    st.table(st.session_state.employees_df)
 
 # -------------------------
 # 信息发送部分（带时间戳）
@@ -158,6 +158,7 @@ with st.form(key="message_form", clear_on_submit=True):
     submitted = st.form_submit_button("Send")
     if submitted and message:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # 这里可以根据需要扩展，例如增加发送者姓名
         st.session_state.messages.append({"time": timestamp, "message": message})
         with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
             json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
