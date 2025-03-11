@@ -51,7 +51,7 @@ if st.sidebar.button("Generate Employees"):
 
     employees = []
     emp_counter = 1
-    # 生成 KILLER 员工（高工时、高夜班（初始设为0，待手动更新）、低奖金）
+    # 生成 KILLER 员工（高工时、高夜班（初始为0）、低奖金）
     for _ in range(num_killers):
         emp_id = f"{emp_counter:03d}"
         hours_worked = random.randint(16, 20)
@@ -147,8 +147,8 @@ if st.session_state.employees_df is not None:
         st.success(f"Employee {selected_employee}'s {selected_field} updated to {new_value}!")
 
     st.subheader("Employee Table")
-    # 显示时去除 Unfairness 和 Role 两列
-    display_df = st.session_state.employees_df.drop(columns=["Unfairness", "Role"])
+    # 显示时仅去除 Unfairness 列，保留 Role 列
+    display_df = st.session_state.employees_df.drop(columns=["Unfairness"])
     st.table(display_df)
 
 # -------------------------
