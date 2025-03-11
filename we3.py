@@ -32,32 +32,6 @@ if "messages" not in st.session_state:
 
 st.title("H&M Night Shift Crisis - Work Overview")
 
-# 定义公平度计算函数
-def calc_fairness(hours, bonus, night_shifts):
-    potential = hours * 50 + night_shifts * 20
-    return bonus / potential if potential > 0 else 0
-
-# 定义重新分配角色的函数
-def recalc_roles(df):
-    # 重新计算每个员工的 Fairness
-    df["Fairness"] = df.apply(lambda row: calc_fairness(row["Hours Worked"], row["Bonus (HKD)"], row["Night Shifts"]), axis=1)
-    # 按 Fairness 升序排序，Fairness 越低说明待遇越差
-    df_sorted = df.sort_values(by="Fairness", ascending=True).reset_index(drop=True)
-    # 固定将最低的 2 人标记为 KILLER
-    df_sorted.loc[:1, "Role"] = "KILLER"
-    # 固定将排序中第 3、4 名标记为 DOCTOR（如果员工数足够）
-    if len(df_sorted) >= 4:
-        df_sorted.loc[2:3, "Role"] = "DOCTOR"
-    # 剩余员工从索引 4 开始，随机分配：若随机数 < 0.1 则为 DETECTIVE，否则为 CIVILIAN
-    for idx in range(4, len(df_sorted)):
-        r = random.random()
-        if r < 0.1:
-            df_sorted.at[idx, "Role"] = "DETECTIVE"
-        else:
-            df_sorted.at[idx, "Role"] = "CIVILIAN"
-    # 返回按员工编号排序的 DataFrame
-    return df_sorted.sort_values(by="Employee #").reset_index(drop=True)
-
 # -------------------------
 # 侧边栏：生成员工数据
 # -------------------------
@@ -65,31 +39,91 @@ st.sidebar.header("Settings")
 num_employees = st.sidebar.number_input("Number of employees", min_value=1, max_value=999, value=30, step=1)
 
 if st.sidebar.button("Generate Employees"):
+    # 固定比例
+    killer_ratio = 0.2      # 20%
+    detective_ratio = 0.1   # 10%
+    doctor_ratio = 0.1      # 10%
+    total = num_employees
+    num_killers = max(1, round(total * killer_ratio))
+    num_detectives = max(1, round(total * detective_ratio))
+    num_doctors = max(1, round(total * doctor_ratio))
+    num_civilians = total - num_killers - num_detectives - num_doctors
+
     employees = []
-    for i in range(num_employees):
-        emp_id = f"{i+1:03d}"
-        # 模拟“待遇差”的概率：20% 的员工生成较高工时和低奖金；其余生成较好待遇
-        if random.random() < 0.2:
-            hours_worked = random.randint(16, 20)
-            bonus = random.randint(0, hours_worked * 20)
-        else:
-            hours_worked = random.randint(5, 15)
-            bonus = random.randint(hours_worked * 40, hours_worked * 50)
-        night_shifts = 0  # 初始均为 0，由你手动更新
-        fairness = calc_fairness(hours_worked, bonus, night_shifts)
+    emp_counter = 1
+    # 生成 KILLER 员工（高工时、高夜班（初始设为0，待手动更新）、低奖金）
+    for _ in range(num_killers):
+        emp_id = f"{emp_counter:03d}"
+        hours_worked = random.randint(16, 20)
+        night_shifts = 0
+        bonus = random.randint(0, 50)
+        unfairness = (hours_worked * 50 + night_shifts * 20) - bonus
         employees.append({
             "Employee #": emp_id,
             "Hours Worked": hours_worked,
             "Bonus (HKD)": bonus,
             "Night Shifts": night_shifts,
-            "Fairness": fairness  # 内部记录，不显示
+            "Unfairness": unfairness,
+            "Role": "KILLER"
         })
+        emp_counter += 1
+
+    # 生成 DETECTIVE 员工（中等工时、适中奖金、少量夜班（初始为0））
+    for _ in range(num_detectives):
+        emp_id = f"{emp_counter:03d}"
+        hours_worked = random.randint(8, 15)
+        night_shifts = 0
+        bonus = random.randint(100, 200)
+        unfairness = (hours_worked * 50 + night_shifts * 20) - bonus
+        employees.append({
+            "Employee #": emp_id,
+            "Hours Worked": hours_worked,
+            "Bonus (HKD)": bonus,
+            "Night Shifts": night_shifts,
+            "Unfairness": unfairness,
+            "Role": "DETECTIVE"
+        })
+        emp_counter += 1
+
+    # 生成 DOCTOR 员工（参数与侦探类似，夜班初始为0）
+    for _ in range(num_doctors):
+        emp_id = f"{emp_counter:03d}"
+        hours_worked = random.randint(8, 15)
+        night_shifts = 0
+        bonus = random.randint(100, 200)
+        unfairness = (hours_worked * 50 + night_shifts * 20) - bonus
+        employees.append({
+            "Employee #": emp_id,
+            "Hours Worked": hours_worked,
+            "Bonus (HKD)": bonus,
+            "Night Shifts": night_shifts,
+            "Unfairness": unfairness,
+            "Role": "DOCTOR"
+        })
+        emp_counter += 1
+
+    # 生成 CIVILIAN 员工（低工时、低夜班（初始为0）、高奖金）
+    for _ in range(num_civilians):
+        emp_id = f"{emp_counter:03d}"
+        hours_worked = random.randint(5, 12)
+        night_shifts = 0
+        bonus = random.randint(150, 300)
+        unfairness = (hours_worked * 50 + night_shifts * 20) - bonus
+        employees.append({
+            "Employee #": emp_id,
+            "Hours Worked": hours_worked,
+            "Bonus (HKD)": bonus,
+            "Night Shifts": night_shifts,
+            "Unfairness": unfairness,
+            "Role": "CIVILIAN"
+        })
+        emp_counter += 1
+
     df = pd.DataFrame(employees)
-    # 根据 Fairness 重新分配角色
-    df = recalc_roles(df)
+    df = df.sort_values(by="Employee #").reset_index(drop=True)
     st.session_state.employees_df = df
     df.to_csv(EMPLOYEES_FILE, index=False)
-    st.sidebar.success("Employees generated with fairness-based role assignment!")
+    st.sidebar.success("Employees generated with differentiated initial values!")
 
 # -------------------------
 # 员工数据修改功能
@@ -106,18 +140,15 @@ if st.session_state.employees_df is not None:
         df = st.session_state.employees_df
         idx = df[df["Employee #"] == selected_employee].index[0]
         df.at[idx, selected_field] = new_value
-        # 重新计算公平度并重新分配角色
-        df = recalc_roles(df)
+        # 重新计算不公平度（保持原角色不变）
+        df.at[idx, "Unfairness"] = (df.at[idx, "Hours Worked"] * 50 + df.at[idx, "Night Shifts"] * 20) - df.at[idx, "Bonus (HKD)"]
         st.session_state.employees_df = df
         df.to_csv(EMPLOYEES_FILE, index=False)
-        st.success(f"Employee {selected_employee}'s {selected_field} updated to {new_value} and roles recalculated!")
+        st.success(f"Employee {selected_employee}'s {selected_field} updated to {new_value}!")
 
     st.subheader("Employee Table")
-    # 显示时检查是否存在 "Fairness" 列
-    if "Fairness" in st.session_state.employees_df.columns:
-        display_df = st.session_state.employees_df.drop(columns=["Fairness"])
-    else:
-        display_df = st.session_state.employees_df
+    # 显示时去除 Unfairness 和 Role 两列
+    display_df = st.session_state.employees_df.drop(columns=["Unfairness", "Role"])
     st.table(display_df)
 
 # -------------------------
