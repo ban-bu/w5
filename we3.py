@@ -113,8 +113,11 @@ if st.session_state.employees_df is not None:
         st.success(f"Employee {selected_employee}'s {selected_field} updated to {new_value} and roles recalculated!")
 
     st.subheader("Employee Table")
-    # 显示时去除 Fairness 列，但保留 Role 列
-    display_df = st.session_state.employees_df.drop(columns=["Fairness"])
+    # 显示时检查是否存在 "Fairness" 列
+    if "Fairness" in st.session_state.employees_df.columns:
+        display_df = st.session_state.employees_df.drop(columns=["Fairness"])
+    else:
+        display_df = st.session_state.employees_df
     st.table(display_df)
 
 # -------------------------
